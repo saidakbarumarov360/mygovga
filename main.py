@@ -58,7 +58,7 @@ def get_back_button(section):
     keyboard = InlineKeyboardMarkup()
     keyboard.row(
         InlineKeyboardButton("Orqaga qaytish", callback_data=f"back_to_{section}"),
-        InlineKeyboardButton("Bosh menyuga qaytish", callback_data="back_to_main")
+        InlineKeyboardButton("Bosh menyuga", callback_data="back_to_main")
     )
     return keyboard
 
