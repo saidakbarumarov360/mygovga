@@ -22,7 +22,7 @@ blocked_user_ids = set()
 user_data = {}
 start_message = "Xush kelibsiz!"
 DATA_FILE = "user_data.json"
-BASE_PATH = r"rasmlar"  # Rasm fayllari joylashgan yo'l
+BASE_PATH = r"rasmlaar"  # Rasm fayllari joylashgan yo'l
 
 # Ma'lumotlarni fayldan yuklash
 def load_data():
