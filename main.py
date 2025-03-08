@@ -15,10 +15,6 @@ bot = Bot(token=TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
-
-
- 
-
 admin_ids = {5921153725, 6446277435}
 blocked_user_ids = set()
 user_data = {}
@@ -109,12 +105,19 @@ async def process_section_callback(callback_query: types.CallbackQuery):
     chat_id = callback_query.message.chat.id
     message_id = callback_query.message.message_id
 
-    if data == "back_to_main":
+    # Avvalgi xabarni o‘chirish
+    try:
         await bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except Exception as e:
+        print(f"Xabarni o‘chirishda xato: {e}")  # Agar xabar allaqachon o‘chirilgan bo‘lsa, e’tibor bermaslik uchun
+
+    # Bosh menyuga qaytish
+    if data == "back_to_main":
         await bot.send_message(chat_id=chat_id, text=start_message, reply_markup=main_menu)
         await callback_query.answer()
         return
 
+    # Bo‘limni aniqlash
     section = data.split("_")[0] if "back_to_" not in data else data.split("_")[2]
     photo_map = {
         "subsidy": "1.jpg",
@@ -166,39 +169,43 @@ async def process_section_callback(callback_query: types.CallbackQuery):
 
     # Callback ma’lumotlariga qarab caption tanlash
     if data.endswith("_info"):
-        caption = info_captions[section]
+        caption = info_captions.get(section, "Ma'lumot topilmadi!")
     elif data.endswith("_cost_time"):
-        caption = cost_time_captions[section]
+        caption = cost_time_captions.get(section, "Ma'lumot topilmadi!")
     elif data.endswith("_docs"):
-        caption = docs_captions[section]
+        caption = docs_captions.get(section, "Ma'lumot topilmadi!")
     elif data.startswith("back_to_"):
         caption = f"{section.title()} haqida ma'lumot olish uchun quyidagi tugmalardan birini tanlang:"
     else:
-        await callback_query.answer("Noma'lum buyruq!")
+        await bot.send_message(chat_id, "Noma'lum buyruq!")
+        await callback_query.answer()
         return
 
+    # Yangi xabar yuborish
     try:
         with open(photo_path, 'rb') as photo:
-            media = types.InputMediaPhoto(media=photo, caption=caption, parse_mode="Markdown")
             if data.startswith("back_to_"):
-                await bot.edit_message_media(
-                    media=media,
+                await bot.send_photo(
                     chat_id=chat_id,
-                    message_id=message_id,
-                    reply_markup=get_options(section)
+                    photo=photo,
+                    caption=caption,
+                    reply_markup=get_options(section),
+                    parse_mode="Markdown"
                 )
             else:
-                await bot.edit_message_media(
-                    media=media,
+                await bot.send_photo(
                     chat_id=chat_id,
-                    message_id=message_id,
-                    reply_markup=get_back_button(section)
+                    photo=photo,
+                    caption=caption,
+                    reply_markup=get_back_button(section),
+                    parse_mode="Markdown"
                 )
         await callback_query.answer()
     except FileNotFoundError:
         await bot.send_message(chat_id, f"Kechirasiz, rasm topilmadi! Yo‘l: {photo_path}")
     except Exception as e:
         await bot.send_message(chat_id, f"Xatolik yuz berdi: {str(e)}")
+        print(f"Xato: {e}")
 
 
 
