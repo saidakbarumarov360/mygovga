@@ -7,7 +7,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 from datetime import datetime, timedelta
 import json
 import os
-
+from pathlib import Path
 
 # Global o'zgaruvchilar
 TOKEN = "7598783058:AAEDN0RnwQc7biR3QbQdJxDeqrzG-vMDEzg"
@@ -17,12 +17,14 @@ dp = Dispatcher(bot, storage=storage)
 
 
 
-admin_ids = {5921153725}
+admin_ids = {5921153725,6446277435}
 blocked_user_ids = set()
 user_data = {}
 start_message = "Xush kelibsiz!"
 DATA_FILE = "user_data.json"
-BASE_PATH = r"rasmlaar"  # Rasm fayllari joylashgan yo'l
+
+# Dinamik yo‘lni aniqlash uchun pathlib ishlatamiz
+BASE_PATH = Path(__file__).parent / "rasmlaar"  # main.py bilan bir darajadagi "images" papkasi
 
 # Ma'lumotlarni fayldan yuklash
 def load_data():
@@ -49,7 +51,6 @@ main_menu.row(KeyboardButton("Subsidiya👍"), KeyboardButton("Oila va bolalar�
 main_menu.row(KeyboardButton("Ijtimoiy himoya 🛡️"), KeyboardButton("Ma'lumotnomalar 📋"))
 main_menu.row(KeyboardButton("Pensiya 👴👵"), KeyboardButton("Ta'lim 📚"))
 main_menu.row(KeyboardButton("Yoshlar 👩‍💼👨‍💼"), KeyboardButton("Soliq 💸"))
- 
 
 # Har bir bo‘lim uchun inline tugmalar
 def get_options(section):
@@ -91,11 +92,12 @@ async def section_menu(message: types.Message):
         "Ta'lim 📚": ("education", "6.jpg"),
         "Yoshlar 👩‍💼👨‍💼": ("youth", "7.jpg"),
         "Soliq 💸": ("tax", "8.jpg"),
-        "MyGov'dan ro‘yxatdan o‘tish 📲": ("mygov", "9.jpg")  # Yangi bo‘lim
+        "MyGov'dan ro‘yxatdan o‘tish 📲": ("mygov", "9.jpg")
     }
     section_key, photo_name = section_map[message.text]
-    photo_path = f"{BASE_PATH}\\{photo_name}"
+    photo_path = BASE_PATH / photo_name  # pathlib yordamida yo‘l yaratamiz
     caption = f"{message.text} haqida ma'lumot olish uchun quyidagi tugmalardan birini tanlang:"
+    
     try:
         with open(photo_path, 'rb') as photo:
             await bot.send_photo(
@@ -105,7 +107,7 @@ async def section_menu(message: types.Message):
                 reply_markup=get_options(section_key)
             )
     except FileNotFoundError:
-        await message.reply("Kechirasiz, rasm topilmadi!")
+        await message.reply(f"Kechirasiz, rasm topilmadi! Yo‘l: {photo_path}")
 
 # Inline tugmalar uchun handler
 @dp.callback_query_handler(lambda c: c.data.startswith(("subsidy_", "family_", "social_", "certificates_", "pension_", "education_", "youth_", "tax_", "mygov_", "back_to_")) or c.data == "back_to_main")
@@ -126,9 +128,9 @@ async def process_section_callback(callback_query: types.CallbackQuery):
         "education": "6.jpg",
         "youth": "7.jpg",
         "tax": "8.jpg",
-        "mygov": "9.jpg"  # Yangi rasm
+        "mygov": "9.jpg"
     }
-    photo_path = f"{BASE_PATH}\\{photo_map[section]}"
+    photo_path = BASE_PATH / photo_map[section]  # pathlib yordamida yo‘l
 
     if callback_query.data == f"{section}_info":
         captions = {
@@ -379,10 +381,16 @@ my.gov.uz
                 )
         await callback_query.answer()
     except FileNotFoundError:
-        await callback_query.message.reply("Kechirasiz, rasm topilmadi!")
+        await callback_query.message.reply(f"Kechirasiz, rasm topilmadi! Yo‘l: {photo_path}")
     except Exception as e:
         print(f"Xato: {e}")
         await callback_query.answer("Xatolik yuz berdi, qayta urinib ko‘ring!")
+
+
+
+
+
+
 
 
 
