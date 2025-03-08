@@ -17,16 +17,16 @@ dp = Dispatcher(bot, storage=storage)
 
 
 
-admin_ids = {5921153725,6446277435}
+ 
+
+admin_ids = {5921153725, 6446277435}
 blocked_user_ids = set()
 user_data = {}
 start_message = "Xush kelibsiz!"
 DATA_FILE = "user_data.json"
 
-# Dinamik yo‘lni aniqlash uchun pathlib ishlatamiz
-BASE_PATH = Path(__file__).parent / "rasmlaar"  # main.py bilan bir darajadagi "images" papkasi
+BASE_PATH = Path(__file__).parent / "rasmlaar"  # main.py bilan bir darajadagi "rasmlaar" papkasi
 
-# Ma'lumotlarni fayldan yuklash
 def load_data():
     global user_data, blocked_user_ids
     if os.path.exists(DATA_FILE):
@@ -36,7 +36,6 @@ def load_data():
             blocked_user_ids = set(data.get("blocked", []))
     return user_data.keys()
 
-# Ma'lumotlarni faylga saqlash
 def save_data():
     with open(DATA_FILE, "w", encoding="utf-8") as file:
         json.dump({
@@ -44,7 +43,6 @@ def save_data():
             "blocked": list(blocked_user_ids)
         }, file, ensure_ascii=False, indent=4)
 
-# Asosiy menyu
 main_menu = ReplyKeyboardMarkup(resize_keyboard=True)
 main_menu.row(KeyboardButton("MyGov'dan ro‘yxatdan o‘tish 📲")) 
 main_menu.row(KeyboardButton("Subsidiya👍"), KeyboardButton("Oila va bolalar👨‍👩‍👧"))
@@ -52,7 +50,6 @@ main_menu.row(KeyboardButton("Ijtimoiy himoya 🛡️"), KeyboardButton("Ma'lumo
 main_menu.row(KeyboardButton("Pensiya 👴👵"), KeyboardButton("Ta'lim 📚"))
 main_menu.row(KeyboardButton("Yoshlar 👩‍💼👨‍💼"), KeyboardButton("Soliq 💸"))
 
-# Har bir bo‘lim uchun inline tugmalar
 def get_options(section):
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("Bo‘lim haqida", callback_data=f"{section}_info"))
@@ -61,7 +58,6 @@ def get_options(section):
     keyboard.add(InlineKeyboardButton("Bosh menyuga qaytish", callback_data="back_to_main"))
     return keyboard
 
-# Orqaga qaytish va Bosh menyuga qaytish tugmalari
 def get_back_button(section):
     keyboard = InlineKeyboardMarkup()
     keyboard.row(
@@ -70,7 +66,6 @@ def get_back_button(section):
     )
     return keyboard
 
-# Start komandasi
 @dp.message_handler(commands=['start'])
 async def start_command(message: types.Message):
     user_id = message.from_user.id
@@ -79,7 +74,6 @@ async def start_command(message: types.Message):
         save_data()
     await message.reply(start_message, reply_markup=main_menu)
 
-# Bo‘limlar uchun handlerlar
 @dp.message_handler(lambda message: message.text in ["Subsidiya👍", "Oila va bolalar👨‍👩‍👧", "Ijtimoiy himoya 🛡️", "Ma'lumotnomalar 📋", 
                                                     "Pensiya 👴👵", "Ta'lim 📚", "Yoshlar 👩‍💼👨‍💼", "Soliq 💸", "MyGov'dan ro‘yxatdan o‘tish 📲"])
 async def section_menu(message: types.Message):
@@ -95,7 +89,7 @@ async def section_menu(message: types.Message):
         "MyGov'dan ro‘yxatdan o‘tish 📲": ("mygov", "9.jpg")
     }
     section_key, photo_name = section_map[message.text]
-    photo_path = BASE_PATH / photo_name  # pathlib yordamida yo‘l yaratamiz
+    photo_path = BASE_PATH / photo_name
     caption = f"{message.text} haqida ma'lumot olish uchun quyidagi tugmalardan birini tanlang:"
     
     try:
@@ -109,16 +103,19 @@ async def section_menu(message: types.Message):
     except FileNotFoundError:
         await message.reply(f"Kechirasiz, rasm topilmadi! Yo‘l: {photo_path}")
 
-# Inline tugmalar uchun handler
 @dp.callback_query_handler(lambda c: c.data.startswith(("subsidy_", "family_", "social_", "certificates_", "pension_", "education_", "youth_", "tax_", "mygov_", "back_to_")) or c.data == "back_to_main")
 async def process_section_callback(callback_query: types.CallbackQuery):
-    if callback_query.data == "back_to_main":
-        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id)
-        await bot.send_message(chat_id=callback_query.message.chat.id, text=start_message, reply_markup=main_menu)
+    data = callback_query.data
+    chat_id = callback_query.message.chat.id
+    message_id = callback_query.message.message_id
+
+    if data == "back_to_main":
+        await bot.delete_message(chat_id=chat_id, message_id=message_id)
+        await bot.send_message(chat_id=chat_id, text=start_message, reply_markup=main_menu)
         await callback_query.answer()
         return
 
-    section = callback_query.data.split("_")[0] if "back_to_" not in callback_query.data else callback_query.data.split("_")[2]
+    section = data.split("_")[0] if "back_to_" not in data else data.split("_")[2]
     photo_map = {
         "subsidy": "1.jpg",
         "family": "2.jpg",
@@ -130,261 +127,81 @@ async def process_section_callback(callback_query: types.CallbackQuery):
         "tax": "8.jpg",
         "mygov": "9.jpg"
     }
-    photo_path = BASE_PATH / photo_map[section]  # pathlib yordamida yo‘l
+    photo_path = BASE_PATH / photo_map[section]
 
-    if callback_query.data == f"{section}_info":
-        captions = {
-            "subsidy": """
-*Subsidiya haqida umumiy ma'lumot* 😊👍  
-**Nima bu?**  
-Subsidiya — bu davlat yordami 💰, uy-joy 🏠, tadbirkorlik 💼 yoki ijtimoiy ehtiyojlar uchun beriladi.  
-**Qayerdan olish mumkin?**  
-"MyGov" portali 🌐 orqali ariza berasiz.
-""",
-            "family": """
-*Oila va bolalar subsidiyasi* 😊👨‍👩‍👧  
-**Nima bu?**  
-Kam ta’minlangan oilalarga bolalar uchun nafaqa 💰 va moddiy yordam 🧸 beriladi.  
-**Kimlar oladi?**  
-- Oylik daromadi past oilalar 📉  
-- "Ijtimoiy himoya yagona reestri"dagilar 📋  
-- 18 yoshgacha farzandi bor oilalar 👶
-""",
-            "social": """
-*Ijtimoiy himoya bo‘limi* 😊🛡️  
-**Nima bu?**  
-Ehtiyojmandlarga davlat yordami 💰: nafaqa yoki bir martalik yordam 🎁.  
-**Kimlar uchun?**  
-- Kam ta’minlanganlar 📉  
-- Nogironligi borlar ♿  
-- Pensionerlar 👴👵
-""",
-            "certificates": """
-*Ma'lumotnomalar bo‘limi* 😊📋  
-**Nima bu?**  
-Rasmiy hujjatlar 📜: daromad, yashash joyi yoki oilaviy holat haqida.  
-**Nima uchun kerak?**  
-- Subsidiya olish 💰  
-- Ishga kirish 👷
-""",
-            "pension": """
-*Pensiya bo‘limi* 😊👴👵  
-**Nima bu?**  
-Yoshlilar 👴, nogironlar ♿ uchun nafaqa 💰.  
-**Kimlar oladi?**  
-- 60 yosh (erkaklar), 55 yosh (ayollar) 📅  
-- Nogironlik guruhiga ega shaxslar ♿
-""",
-            "education": """
-*Ta'lim bo‘limi* 😊📚  
-**Nima bu?**  
-Ta'lim xizmatlari 🎓: stipendiya 💰, attestat olish 📜.  
-**Kimlar uchun?**  
-- Talabalar 👩‍🎓  
-- O‘quvchilar 👶
-""",
-            "youth": """
-*Yoshlar bo‘limi* 😊👩‍💼👨‍💼  
-**Nima bu?**  
-Yoshlarga yordam 🌟: grantlar 💰, tadbirkorlik 💼.  
-**Kimlar uchun?**  
-- Talabalar 👩‍🎓  
-- Ishsiz yoshlar 🚶‍♂️
-""",
-            "tax": """
-*Soliq bo‘limi* 😊💸  
-**Nima bu?**  
-Soliq xizmatlari 📈: qarz tekshirish 🚨, STIR olish 🪪.  
-**Kimlar uchun?**  
-- Jismoniy shaxslar 👤  
-- Tadbirkorlar 💼
-""",
-            "mygov": """
-*MyGov'dan ro‘yxatdan o‘tish haqida* 🌐  
-**Nima bu?**  
-MyGov — bu davlat xizmatlarini onlayn olish uchun yagona portal 🌍. Ro‘yxatdan o‘tish orqali subsidiya, hujjatlar va boshqa xizmatlarga ariza berish mumkin ✍️.  
-**Kimlar uchun?**  
-- O‘zbekiston fuqarolari 🇺🇿  
-- Davlat xizmatlaridan foydalanmoqchi bo‘lganlar 👤
-*Ro'yxatdan o'tish uchun*
-my.gov.uz
-"""
-        }
-        caption = captions[section]
-    elif callback_query.data == f"{section}_cost_time":
-        captions = {
-            "subsidy": """
-*Xizmat narxi va vaqti* 💸⏳  
-**Xizmat narxi** 💸  
-Ko‘pincha *bepul* 🆓, lekin subsidiya turiga qarab bank xarajatlari bo‘lishi mumkin 💳.  
-**Xizmat vaqti** ⏳  
-- Ariza tekshiruvi: 7-15 ish kuni 📅  
-- Tez bo‘lsa: 3-10 kun 🚀  
-- Qo‘shimcha tekshiruv bo‘lsa: biroz kechroq ⏰
-""",
-            "family": """
-*Xizmat narxi va vaqti* 💸⏳  
-**Xizmat narxi** 💸  
-*Bepul* 🆓 — ariza uchun to‘lov yo‘q.  
-**Xizmat vaqti** ⏳  
-- Ariza tekshiruvi: 10-15 ish kuni 📅  
-- Tez bo‘lsa: 7 kun 🚀  
-- To‘lov: Har oy 💳
-""",
-            "social": """
-*Xizmat narxi va vaqti* 💸⏳  
-**Xizmat narxi** 💸  
-*Bepul* 🆓  
-**Xizmat vaqti** ⏳  
-- Ariza tekshiruvi: 10-15 kun 📅  
-- Tez tasdiqlash: 5-7 kun 🚀
-""",
-            "certificates": """
-*Xizmat narxi va vaqti* 💸⏳  
-**Xizmat narxi** 💸  
-Ko‘pincha *bepul* 🆓, pullik bo‘lsa: 30-150 ming so‘m 💵  
-**Xizmat vaqti** ⏳  
-- Onlayn: 1-3 kun 🚀  
-- Standart: 5-7 kun 📅
-""",
-            "pension": """
-*Xizmat narxi va vaqti* 💸⏳  
-**Xizmat narxi** 💸  
-*Bepul* 🆓  
-**Xizmat vaqti** ⏳  
-- Ariza tekshiruvi: 10-15 kun 📅  
-- Tez tasdiqlash: 5-7 kun 🚀
-""",
-            "education": """
-*Xizmat narxi va vaqti* 💸⏳  
-**Xizmat narxi** 💸  
-Ko‘pincha *bepul* 🆓, pullik bo‘lsa: 30-150 ming so‘m 💵  
-**Xizmat vaqti** ⏳  
-- Ariza tekshiruvi: 3-10 kun 📅  
-- Tez xizmat: 1-3 kun 🚀
-""",
-            "youth": """
-*Xizmat narxi va vaqti* 💸⏳  
-**Xizmat narxi** 💸  
-*Bepul* 🆓  
-**Xizmat vaqti** ⏳  
-- Ariza tekshiruvi: 5-15 kun 📅  
-- Tez tasdiqlash: 3-7 kun 🚀
-""",
-            "tax": """
-*Xizmat narxi va vaqti* 💸⏳  
-**Xizmat narxi** 💸  
-*Bepul* 🆓, pullik bo‘lsa: 30-150 ming so‘m 💵  
-**Xizmat vaqti** ⏳  
-- Tez xizmat: 1-3 kun 🚀  
-- Standart: 5-10 kun 📅
-""",
-            "mygov": """
-*Xizmat narxi va vaqti* 💸⏳  
-**Xizmat narxi** 💸  
-Ro‘yxatdan o‘tish *bepul* 🆓, internet va qurilma xarajatlari bundan mustasno 📱💻.  
-**Xizmat vaqti** ⏳  
-- Onlayn ro‘yxatdan o‘tish: 5-10 daqiqa 🚀  
-- Tasdiqlash (SMS/elektron pochta): 1-2 daqiqa 📩  
-- Agar muammo bo‘lsa: 1 ish kuni 📅
-*Ro'yxatdan o'tish uchun*
-my.gov.uz
-"""
-        }
-        caption = captions[section]
-    elif callback_query.data == f"{section}_docs":
-        captions = {
-            "subsidy": """
-*Kerakli hujjatlar* 📜  
-- Pasport/ID 🪪  
-- Ariza (onlayn to‘ldiriladi) ✍️  
-- Daromad ma’lumoti 💵 (ba’zan avtomatik tekshiriladi)  
-- Subsidiya turiga qarab:  
-  - Uy-joy uchun: ipoteka shartnomasi 🏡  
-  - Ijtimoiy holat: mahalla ma’lumotnomasi 🗣️
-""",
-            "family": """
-*Kerakli hujjatlar* 📜  
-- Pasport/ID 🪪  
-- Ariza (onlayn) ✍️  
-- Tug‘ilganlik guvohnomasi 👶📄  
-- Daromad ma’lumoti 💵  
-- Mahalla ma’lumotnomasi 🗣️
-""",
-            "social": """
-*Kerakli hujjatlar* 📜  
-- Pasport/ID 🪪  
-- Ariza (onlayn) ✍️  
-- Daromad ma’lumoti 💵  
-- Nogironlik guvohnomasi ♿ (agar kerak bo‘lsa)
-""",
-            "certificates": """
-*Kerakli hujjatlar* 📜  
-- Pasport/ID 🪪  
-- Ariza (onlayn) ✍️  
-- Daromad ma’lumotnomasi 💵 (agar kerak bo‘lsa)
-""",
-            "pension": """
-*Kerakli hujjatlar* 📜  
-- Pasport/ID 🪪  
-- Ariza (onlayn) ✍️  
-- Mehnat daftarchasi 📒  
-- Nogironlik hujjati ♿ (agar kerak bo‘lsa)
-""",
-            "education": """
-*Kerakli hujjatlar* 📜  
-- Pasport/ID 🪪  
-- Ariza (onlayn) ✍️  
-- O‘quv muassasasi ma’lumotnomasi 🏫
-""",
-            "youth": """
-*Kerakli hujjatlar* 📜  
-- Pasport/ID 🪪  
-- Ariza (onlayn) ✍️  
-- Biznes-reja 📈 (tadbirkorlik uchun)
-""",
-            "tax": """
-*Kerakli hujjatlar* 📜  
-- Pasport/ID 🪪  
-- Ariza (onlayn) ✍️  
-- Tadbirkorlik hujjatlari 💼 (agar kerak bo‘lsa)
-""",
-            "mygov": """
-*Kerakli hujjatlar* 📜  
-- Pasport/ID raqami 🪪  
-- Telefon raqami 📞 (SMS tasdiqlash uchun)  
-- Elektron pochta 📧 (ixtiyoriy, lekin tavsiya etiladi)  
-- Agar tashkilot uchun: STIR yoki boshqa hujjatlar 💼 (kerak bo‘lsa)
-*Ro'yxatdan o'tish uchun*
-my.gov.uz
-"""
-        }
-        caption = captions[section]
-    elif callback_query.data == f"back_to_{section}":
+    # Matnlar uchun lug‘atlar
+    info_captions = {
+        "subsidy": "*Subsidiya haqida umumiy ma'lumot*\nSubsidiya — davlat yordami, uy-joy, tadbirkorlik yoki ijtimoiy ehtiyojlar uchun beriladi.\nQayerdan olish mumkin? MyGov portali orqali ariza berasiz.",
+        "family": "*Oila va bolalar subsidiyasi*\nKam ta’minlangan oilalarga bolalar uchun nafaqa va moddiy yordam beriladi.\nKimlar oladi? Oylik daromadi past oilalar, Ijtimoiy himoya yagona reestridagilar, 18 yoshgacha farzandi bor oilalar.",
+        "social": "*Ijtimoiy himoya bo‘limi*\nEhtiyojmandlarga davlat yordami: nafaqa yoki bir martalik yordam.\nKimlar uchun? Kam ta’minlanganlar, nogironligi borlar, pensionerlar.",
+        "certificates": "*Ma'lumotnomalar bo‘limi*\nRasmiy hujjatlar: daromad, yashash joyi yoki oilaviy holat haqida.\nNima uchun kerak? Subsidiya olish, ishga kirish.",
+        "pension": "*Pensiya bo‘limi*\nYoshlilar, nogironlar uchun nafaqa.\nKimlar oladi? 60 yosh (erkaklar), 55 yosh (ayollar), nogironlik guruhiga ega shaxslar.",
+        "education": "*Ta'lim bo‘limi*\nTa'lim xizmatlari: stipendiya, attestat olish.\nKimlar uchun? Talabalar, o‘quvchilar.",
+        "youth": "*Yoshlar bo‘limi*\nYoshlarga yordam: grantlar, tadbirkorlik.\nKimlar uchun? Talabalar, ishsiz yoshlar.",
+        "tax": "*Soliq bo‘limi*\nSoliq xizmatlari: qarz tekshirish, STIR olish.\nKimlar uchun? Jismoniy shaxslar, tadbirkorlar.",
+        "mygov": "*MyGov'dan ro‘yxatdan o‘tish haqida*\nMyGov — davlat xizmatlarini onlayn olish uchun yagona portal. Ro‘yxatdan o‘tish orqali subsidiya, hujjatlar va boshqa xizmatlarga ariza berish mumkin.\nKimlar uchun? O‘zbekiston fuqarolari.\nRo'yxatdan o'tish uchun: my.gov.uz"
+    }
+    cost_time_captions = {
+        "subsidy": "*Xizmat narxi va vaqti*\nNarxi: Ko‘pincha bepul, subsidiya turiga qarab bank xarajatlari bo‘lishi mumkin.\nVaqti: Ariza tekshiruvi 7-15 ish kuni, tez bo‘lsa 3-10 kun.",
+        "family": "*Xizmat narxi va vaqti*\nNarxi: Bepul — ariza uchun to‘lov yo‘q.\nVaqti: Ariza tekshiruvi 10-15 ish kuni, tez bo‘lsa 7 kun.",
+        "social": "*Xizmat narxi va vaqti*\nNarxi: Bepul.\nVaqti: Ariza tekshiruvi 10-15 kun, tez tasdiqlash 5-7 kun.",
+        "certificates": "*Xizmat narxi va vaqti*\nNarxi: Ko‘pincha bepul, pullik bo‘lsa 30-150 ming so‘m.\nVaqti: Onlayn 1-3 kun, standart 5-7 kun.",
+        "pension": "*Xizmat narxi va vaqti*\nNarxi: Bepul.\nVaqti: Ariza tekshiruvi 10-15 kun, tez tasdiqlash 5-7 kun.",
+        "education": "*Xizmat narxi va vaqti*\nNarxi: Ko‘pincha bepul, pullik bo‘lsa 30-150 ming so‘m.\nVaqti: Ariza tekshiruvi 3-10 kun, tez xizmat 1-3 kun.",
+        "youth": "*Xizmat narxi va vaqti*\nNarxi: Bepul.\nVaqti: Ariza tekshiruvi 5-15 kun, tez tasdiqlash 3-7 kun.",
+        "tax": "*Xizmat narxi va vaqti*\nNarxi: Bepul, pullik bo‘lsa 30-150 ming so‘m.\nVaqti: Tez xizmat 1-3 kun, standart 5-10 kun.",
+        "mygov": "*Xizmat narxi va vaqti*\nNarxi: Ro‘yxatdan o‘tish bepul, internet va qurilma xarajatlari bundan mustasno.\nVaqti: Onlayn ro‘yxatdan o‘tish 5-10 daqiqa, tasdiqlash 1-2 daqiqa."
+    }
+    docs_captions = {
+        "subsidy": "*Kerakli hujjatlar*\n- Pasport/ID\n- Ariza (onlayn to‘ldiriladi)\n- Daromad ma’lumoti (ba’zan avtomatik tekshiriladi)\n- Subsidiya turiga qarab: uy-joy uchun ipoteka shartnomasi, ijtimoiy holat uchun mahalla ma’lumotnomasi.",
+        "family": "*Kerakli hujjatlar*\n- Pasport/ID\n- Ariza (onlayn)\n- Tug‘ilganlik guvohnomasi\n- Daromad ma’lumoti\n- Mahalla ma’lumotnomasi.",
+        "social": "*Kerakli hujjatlar*\n- Pasport/ID\n- Ariza (onlayn)\n- Daromad ma’lumoti\n- Nogironlik guvohnomasi (agar kerak bo‘lsa).",
+        "certificates": "*Kerakli hujjatlar*\n- Pasport/ID\n- Ariza (onlayn)\n- Daromad ma’lumotnomasi (agar kerak bo‘lsa).",
+        "pension": "*Kerakli hujjatlar*\n- Pasport/ID\n- Ariza (onlayn)\n- Mehnat daftarchasi\n- Nogironlik hujjati (agar kerak bo‘lsa).",
+        "education": "*Kerakli hujjatlar*\n- Pasport/ID\n- Ariza (onlayn)\n- O‘quv muassasasi ma’lumotnomasi.",
+        "youth": "*Kerakli hujjatlar*\n- Pasport/ID\n- Ariza (onlayn)\n- Biznes-reja (tadbirkorlik uchun).",
+        "tax": "*Kerakli hujjatlar*\n- Pasport/ID\n- Ariza (onlayn)\n- Tadbirkorlik hujjatlari (agar kerak bo‘lsa).",
+        "mygov": "*Kerakli hujjatlar*\n- Pasport/ID raqami\n- Telefon raqami (SMS tasdiqlash uchun)\n- Elektron pochta (ixtiyoriy, lekin tavsiya etiladi)\nRo'yxatdan o'tish uchun: my.gov.uz"
+    }
+
+    # Callback ma’lumotlariga qarab caption tanlash
+    if data.endswith("_info"):
+        caption = info_captions[section]
+    elif data.endswith("_cost_time"):
+        caption = cost_time_captions[section]
+    elif data.endswith("_docs"):
+        caption = docs_captions[section]
+    elif data.startswith("back_to_"):
         caption = f"{section.title()} haqida ma'lumot olish uchun quyidagi tugmalardan birini tanlang:"
+    else:
+        await callback_query.answer("Noma'lum buyruq!")
+        return
 
     try:
         with open(photo_path, 'rb') as photo:
-            if callback_query.data.startswith("back_to_"):
+            media = types.InputMediaPhoto(media=photo, caption=caption, parse_mode="Markdown")
+            if data.startswith("back_to_"):
                 await bot.edit_message_media(
-                    media=types.InputMediaPhoto(photo, caption=caption, parse_mode=types.ParseMode.MARKDOWN),
-                    chat_id=callback_query.message.chat.id,
-                    message_id=callback_query.message.message_id,
+                    media=media,
+                    chat_id=chat_id,
+                    message_id=message_id,
                     reply_markup=get_options(section)
                 )
             else:
                 await bot.edit_message_media(
-                    media=types.InputMediaPhoto(photo, caption=caption, parse_mode=types.ParseMode.MARKDOWN),
-                    chat_id=callback_query.message.chat.id,
-                    message_id=callback_query.message.message_id,
+                    media=media,
+                    chat_id=chat_id,
+                    message_id=message_id,
                     reply_markup=get_back_button(section)
                 )
         await callback_query.answer()
     except FileNotFoundError:
-        await callback_query.message.reply(f"Kechirasiz, rasm topilmadi! Yo‘l: {photo_path}")
+        await bot.send_message(chat_id, f"Kechirasiz, rasm topilmadi! Yo‘l: {photo_path}")
     except Exception as e:
-        print(f"Xato: {e}")
-        await callback_query.answer("Xatolik yuz berdi, qayta urinib ko‘ring!")
+        await bot.send_message(chat_id, f"Xatolik yuz berdi: {str(e)}")
+
+
+
 
 
 
